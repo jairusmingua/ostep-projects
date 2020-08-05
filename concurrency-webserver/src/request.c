@@ -147,8 +147,9 @@ void request_serve_static(int fd, char *filename, int filesize) {
     munmap_or_die(srcp, filesize);
 }
 void request_handle_thread(int fd){
+    // printf("Request handle11: %d\n",fd);
     pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
-    int rc = pthread_create(&thread, NULL, request_handle,&fd);
+    int rc = pthread_create(&thread, NULL, request_handle,(void*)fd);
         if(rc)
         {
              printf("\n ERROR: return code from pthread_create is %d \n", rc);
@@ -161,17 +162,20 @@ void request_handle_thread(int fd){
 }
 // handle a request
 void * request_handle(void * fd) {
-    int *fdptr = (int*)fd; 
-    int fd_ = *fdptr;
+    int fd_ = malloc(sizeof(int));
+    fd_ = (int)fd; 
+  
     int is_static;
-    printf("Request handle: %d\n",fd_);
     struct stat sbuf;
     char buf[MAXBUF], method[MAXBUF], uri[MAXBUF], version[MAXBUF];
     char filename[MAXBUF], cgiargs[MAXBUF];
+    // printf("Request Handle: %d\n",fd_);
     readline_or_die(fd_, buf, MAXBUF);
+    printf("Request Handle: %d\n",fd_);
     sscanf(buf, "%s %s %s", method, uri, version);
-    // printf("Thread %u - performing task with value %d !\n", (int)pthread_self(), (int*)fd);
+    printf("Thread %u - performing task with value %d !\n", (int)pthread_self(),fd_);
     printf("method:%s uri:%s version:%s\n", method, uri, version);
+    
     
     if (strcasecmp(method, "GET")) {
 	request_error(fd_, method, "501", "Not Implemented", "server does not implement this method");
@@ -198,4 +202,5 @@ void * request_handle(void * fd) {
 	}
 	request_serve_dynamic(fd_, filename, cgiargs);
     }
+    pthread_exit(NULL);
 }

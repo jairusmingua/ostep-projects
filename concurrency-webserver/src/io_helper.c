@@ -1,11 +1,14 @@
 #include "io_helper.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 ssize_t readline(int fd, void *buf, size_t maxlen) {
     char c;
     char *bufp = buf;
     int n;
     for (n = 0; n < maxlen - 1; n++) { // leave room at end for '\0'
 	int rc;
+    printf("Readline: %d\n",fd);
         if ((rc = read_or_die(fd, &c, 1)) == 1) {
             *bufp++ = c;
             if (c == '\n')
