@@ -1,9 +1,6 @@
 #include "io_helper.h"
 #include "request.h"
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+
 //
 // Some of this code stolen from Bryant/O'Halloran
 // Hopefully this is not a problem ... :)
@@ -95,6 +92,10 @@ void request_get_filetype(char *filename, char *filetype) {
 	strcpy(filetype, "image/gif");
     else if (strstr(filename, ".jpg")) 
 	strcpy(filetype, "image/jpeg");
+    else if(strstr(filename,".css"))
+    strcpy(filetype,"text/css");
+    else if(strstr(filename,".js"))
+    strcpy(filetype,"text/js");
     else 
 	strcpy(filetype, "text/plain");
 }
@@ -146,61 +147,43 @@ void request_serve_static(int fd, char *filename, int filesize) {
     write_or_die(fd, srcp, filesize);
     munmap_or_die(srcp, filesize);
 }
-void request_handle_thread(int fd){
-    // printf("Request handle11: %d\n",fd);
-    pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
-    int rc = pthread_create(&thread, NULL, request_handle,(void*)fd);
-        if(rc)
-        {
-             printf("\n ERROR: return code from pthread_create is %d \n", rc);
-             exit(1);
-        }else{
-            printf("Thread Created\n");
-        }
-    
-    
-}
+
+
 // handle a request
-void * request_handle(void * fd) {
-    int fd_ = malloc(sizeof(int));
-    fd_ = (int)fd; 
-  
+void request_handle(int fd) {
+    int fd_ = fd;
     int is_static;
     struct stat sbuf;
     char buf[MAXBUF], method[MAXBUF], uri[MAXBUF], version[MAXBUF];
     char filename[MAXBUF], cgiargs[MAXBUF];
-    // printf("Request Handle: %d\n",fd_);
     readline_or_die(fd_, buf, MAXBUF);
-    printf("Request Handle: %d\n",fd_);
     sscanf(buf, "%s %s %s", method, uri, version);
-    printf("Thread %u - performing task with value %d !\n", (int)pthread_self(),fd_);
+    printf("Thread %d recieved a request!!!",(int)pthread_self());
     printf("method:%s uri:%s version:%s\n", method, uri, version);
-    
-    
     if (strcasecmp(method, "GET")) {
 	request_error(fd_, method, "501", "Not Implemented", "server does not implement this method");
-	pthread_exit(NULL);
+	return;
     }
     request_read_headers(fd_);
     
     is_static = request_parse_uri(uri, filename, cgiargs);
     if (stat(filename, &sbuf) < 0) {
 	request_error(fd_, filename, "404", "Not found", "server could not find this file");
-	pthread_exit(NULL);
+	return;
     }
     
     if (is_static) {
 	if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
 	    request_error(fd_, filename, "403", "Forbidden", "server could not read this file");
-	    pthread_exit(NULL);
+	    return;
 	}
 	request_serve_static(fd_, filename, sbuf.st_size);
     } else {
 	if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
 	    request_error(fd_, filename, "403", "Forbidden", "server could not run this CGI program");
-	    pthread_exit(NULL);
+	    return;
 	}
 	request_serve_dynamic(fd_, filename, cgiargs);
     }
-    pthread_exit(NULL);
+    
 }
