@@ -1,1 +1,5 @@
 startbootstrap-sb-admin-2-gh-pages
+*.o
+wclient
+wserver
+spin.cgi
